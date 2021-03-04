@@ -1,0 +1,53 @@
+---
+title: "Phase 1 Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(tidyverse)
+library(tidymodels)
+ames_student <- read_csv("ames_student.csv")
+```
+
+Column {data-width=650}
+-----------------------------------------------------------------------
+
+### Neighborhood
+
+```{r}
+ggplot(ames_student, aes(Neighborhood,fill=Above_Median))+
+  geom_bar()+
+  theme(axis.text.x=element_text(angle = -90, hjust = 0))
+```
+
+### Year Built
+
+```{r}
+ggplot(ames_student, aes(Year_Built,fill=Above_Median))+
+  geom_bar()
+```
+
+
+
+Column {data-width=350}
+-----------------------------------------------------------------------
+
+### Kitchen Quality
+```{r}
+ggplot(ames_student, aes(Kitchen_Qual,fill=Above_Median))+
+  geom_bar()
+```
+
+### Month Sold
+
+```{r}
+ggplot(ames_student, aes(Mo_Sold,fill=Above_Median))+
+  geom_bar()
+```
+
+

@@ -1,0 +1,66 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+# Project Phase 1
+## Andrew Goff
+
+```{r include=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(ggplot2)
+library(lmtest)
+library(mice) 
+library(VIM) 
+library(ranger) 
+library(randomForest) 
+library(caret)
+library(skimr)
+library(GGally)
+library(gridExtra)
+library(vip)
+library(ggcorrplot)
+library(MASS)
+library(car)
+library(lubridate)
+```
+
+```{r}
+ames_student <- read_csv("ames_student.csv")
+```
+```{r}
+summary(ames_student)
+```
+
+```{r}
+ggplot(ames_student, aes(Above_Median))+
+  geom_bar()
+```
+
+```{r}
+ggplot(ames_student, aes(Lot_Shape,fill=Above_Median))+
+  geom_bar()
+ggplot(ames_student, aes(Lot_Config,fill=Above_Median))+
+  geom_bar()
+ggplot(ames_student, aes(Neighborhood,fill=Above_Median))+
+  geom_bar()+
+  theme(axis.text.x=element_text(angle = -90, hjust = 0))
+ggplot(ames_student, aes(Overall_Qual,fill=Above_Median))+
+  geom_bar()+
+  theme(axis.text.x=element_text(angle = -90, hjust = 0))
+ggplot(ames_student, aes(Overall_Cond,fill=Above_Median))+
+  geom_bar()
+ggplot(ames_student, aes(Year_Built,fill=Above_Median))+
+  geom_bar()
+ggplot(ames_student, aes(Kitchen_Qual,fill=Above_Median))+
+  geom_bar()
+ggplot(ames_student, aes(Sale_Type,fill=Above_Median))+
+  geom_bar()
+ggplot(ames_student, aes(Sale_Condition,fill=Above_Median))+
+  geom_bar()
+ggplot(ames_student, aes(Mo_Sold,fill=Above_Median))+
+  geom_bar()
+```
+
+
