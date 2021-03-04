@@ -1,0 +1,44 @@
+```{r}
+air <- airquality
+air
+```
+
+
+```{r}
+library(tidyverse)
+
+air2 <- drop_na(air)
+air2
+```
+```{r}
+library(tidymodels)
+library(GGally)
+library(lmtest)
+```
+```{r}
+ggpairs(air2)
+```
+```{r}
+tempozone = recipe(Ozone ~ Temp,air2)
+tempozone
+```
+```{r}
+lm_model =
+  linear_reg() %>%
+  set_engine("lm")
+```
+```{r}
+lm_wflow =
+  workflow() %>%
+  add_model(lm_model) %>%
+  add_recipe(tempozone)
+```
+
+```{r}
+lm_fit = fit(lm_wflow,air2)
+```
+
+```{r}
+summary(lm_fit$fit$fit$fit)
+```
+

@@ -1,0 +1,42 @@
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(VIM)
+library(mice)
+library(readr)
+library(skimr)
+library(naniar)
+library(UpSetR)
+class_grades <- read_csv("class-grades.csv")
+```
+
+```{r}
+class_grades -> grades
+str(grades)
+summary(grades)
+skim(grades)
+```
+```{r}
+grades_coldel = grades %>% select(-Tutorial,-Midterm,-TakeHome,-Final)
+grades_rowdel = grades %>% drop_na()
+```
+
+```{r}
+set.seed(123)
+imp_Tutorial = mice(grades,m=5,method='pmm',printFlag=FALSE)
+imp_Midterm = mice(grades,m=5,method='pmm',printFlag=FALSE)
+imp_TakeHome = mice(grades,m=5,method='pmm',printFlag=FALSE)
+imp_final = mice(grades,m=5,method='pmm',printFlag=FALSE)
+```
+
+```{r}
+grades_complete = complete(imp_final)
+grades_complete = complete(imp_Midterm)
+grades_complete = complete(imp_TakeHome)
+grades_complete = complete(imp_Tutorial)
+```
+
+```{r}
+mean(grades_complete$Final)
+```
+

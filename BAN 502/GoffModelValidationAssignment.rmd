@@ -1,0 +1,83 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+# Model Validation
+## Andrew Goff
+
+```{r include=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(GGally)
+library(glmnet)
+library(lubridate)
+library(readr)
+```
+
+```{r}
+bike <- read_csv("bike_cleaned-2.csv")
+bike = bike%>% mutate(dteday =mdy(dteday))
+bike = bike %>%
+  mutate(season = as_factor(season)) %>%
+  mutate(mnth = as_factor(mnth)) %>%
+  mutate(hr = as_factor(hr)) %>%
+  mutate(holiday = as_factor(holiday)) %>%
+  mutate(weekday = as_factor(weekday)) %>%
+  mutate(workingday = as_factor(workingday)) %>%
+  mutate(weathersit = as_factor(weathersit))
+```
+
+```{r}
+set.seed(1234)
+bike_split = initial_split(bike,prob=0.70,strata = count)
+train = training(bike_split)
+test = testing(bike_split)
+```
+
+There are 4343 rows in the testing set and 13036 in the training set.
+
+```{r}
+bike_recipe = recipe(count ~ season+mnth+hr+holiday+weekday+temp+weathersit, train)
+lm_model =
+  linear_reg() %>%
+  set_engine("lm")
+lm_wkflow =
+  workflow() %>%
+  add_model(lm_model) %>%
+  add_recipe(bike_recipe)
+lm_fit = fit(lm_wkflow, train)
+```
+
+```{r}
+summary(lm_fit$fit$fit$fit)
+```
+
+A majority of the variables appear to be significant predictors, adjusted r squared is 0.6229.
+
+```{r}
+predict_train = predict(lm_fit,train)
+predict_train
+```
+```{r}
+ggplot(predict_train, aes(.pred)) +
+  geom_histogram()
+  
+```
+
+The distribution of the predictions appears to be normal.
+
+```{r}
+bike_recipe2 = recipe(count ~ season+mnth+hr+holiday+weekday+temp+weathersit, test)
+lm_model2 =
+  linear_reg() %>%
+  set_engine("lm")
+lm_wkflow2 =
+  workflow() %>%
+  add_model(lm_model2) %>%
+  add_recipe(bike_recipe2)
+lm_fit2 = fit(lm_wkflow, test)
+summary(lm_fit2$fit$fit$fit)
+```
+
+Adjusted r squared for the testing model is 0.623 which is about the same as the training model.

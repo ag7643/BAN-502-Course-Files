@@ -1,0 +1,192 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+# Logistic Regression (Classification)
+## Andrew Goff
+
+```{r include=FALSE}
+library(tidyverse)
+library(tidymodels)
+library(e1071)
+library(ROCR)
+library(readr)
+library(GGally)
+```
+
+```{r}
+parole <- read_csv("parole.csv")
+```
+
+```{r}
+parole = parole %>%
+  mutate(male = as_factor(male)) %>% 
+  mutate(male = fct_recode(male, "Male" = "1", "Female" = "0")) %>%
+  mutate(race = as_factor(race)) %>%
+  mutate(race = fct_recode(race, "White" = "1", "Other" = "2")) %>%
+  mutate(state = as_factor(state)) %>%
+  mutate(state = fct_recode(state, "Other"="1","Kentucky"="2","Louisiana"="3","Virginia"="4")) %>%
+  mutate(crime = as_factor(crime)) %>%
+  mutate(crime = fct_recode(crime, "Other"="1","Larceny"="2","Drugs"="3","Driving"="4")) %>%
+  mutate(multiple.offenses = as_factor(multiple.offenses)) %>%
+  mutate(multiple.offenses = fct_recode(multiple.offenses, "Yes"="1","No"="0")) %>%
+  mutate(violator = as_factor(violator)) %>%
+  mutate(violator = fct_recode(violator, "Violated"="1","NonViolator"="0"))
+  
+```
+
+```{r}
+set.seed(12345)
+parole_split = initial_split(parole,prob=0.70,strata = violator)
+train = training(parole_split)
+test = testing(parole_split)
+```
+
+```{r}
+ggplot(train,aes(x=male,fill=violator)) + geom_bar(position="fill") + theme_bw()
+ggplot(train,aes(x=race,fill=violator)) + geom_bar(position="fill") + theme_bw()
+ggplot(train,aes(x=state,fill=violator)) + geom_bar(position="fill") + theme_bw()
+ggplot(train,aes(x=max.sentence,fill=violator)) + geom_bar(position="fill") + theme_bw()
+ggplot(train,aes(x=multiple.offenses,fill=violator)) + geom_bar(position="fill") + theme_bw()
+ggplot(train,aes(x=crime,fill=violator)) + geom_bar(position="fill") + theme_bw()
+
+```
+```{r}
+ggplot(train,aes(x=violator,y=age))+geom_boxplot()+theme_bw()
+ggplot(train,aes(x=violator,y=time.served))+geom_boxplot()+theme_bw()
+ggplot(train,aes(x=violator,y=max.sentence))+geom_boxplot()+theme_bw()
+
+
+```
+
+Just based on the visualizations I created, it appears to me that the most predictive variables are State, Multiple offenses, and type of crime. There was a slight difference in Race, Max sentence, and Time served but it did not appear significant.
+
+```{r}
+parole_model =
+  logistic_reg() %>%
+  set_engine("glm")
+
+parole_recipe = recipe(violator ~ state, train)%>%
+  step_dummy(all_nominal(),-all_outcomes())
+
+logreg_wf = workflow() %>%
+  add_recipe(parole_recipe) %>%
+  add_model(parole_model)
+
+parole_fit = fit(logreg_wf, train)
+```
+
+```{r}
+summary(parole_fit$fit$fit$fit)
+```
+
+This model supports what I saw in the prior visualization, that state is a significant predictor of parole violation and that those from Louisiana are more likely to be parole violators.
+
+```{r}
+parole_model2 =
+  logistic_reg() %>%
+  set_engine("glm")
+
+parole_recipe2 = recipe(violator ~ state+male+race+max.sentence+multiple.offenses+crime+age+time.served+max.sentence, train)%>%
+  step_dummy(all_nominal(),-all_outcomes())
+
+logreg_wf2 = workflow() %>%
+  add_recipe(parole_recipe2) %>%
+  add_model(parole_model2)
+
+parole_fit2 = fit(logreg_wf2, train)
+
+summary(parole_fit2$fit$fit$fit)
+```
+
+The AIC of this model is lower than the previous model using the just the state variable.  The significant variables of are multiple offenses (yes) and state (virginia).
+
+```{r}
+parole_model3 =
+  logistic_reg() %>%
+  set_engine("glm")
+
+parole_recipe3 = recipe(violator ~ state+race+multiple.offenses, train)%>%
+  step_dummy(all_nominal(),-all_outcomes())
+
+logreg_wf3 = workflow() %>%
+  add_recipe(parole_recipe3) %>%
+  add_model(parole_model3)
+
+parole_fit3 = fit(logreg_wf3, train)
+
+summary(parole_fit3$fit$fit$fit)
+```
+
+This model has an even lower AIC with the same variables being significant.
+
+```{r}
+parolee1 = data.frame(state="Louisiana",multiple.offenses="Yes",race="White")
+predict(parole_fit3,parolee1,type="prob")
+parolee2 = data.frame(state="Kentucky",multiple.offenses="No",race="Other")
+predict(parole_fit3,parolee2,type="prob")
+```
+
+Parolee1 has a predicted probability of about 44% and Parolee2 has a predicted probability of about 15% for violating parole.
+
+```{r}
+predictions= predict(parole_fit2,train,type="prob")
+head(predictions)
+```
+```{r}
+predictions= predict(parole_fit2,train,type="prob") [2]
+head(predictions)
+```
+```{r}
+ROCRpred = prediction(predictions, train$violator)
+ROCRperf = performance(ROCRpred,"tpr","fpr")
+plot(ROCRperf,colorize=TRUE,print.cutoffs.at=seq(0,1,by=0.1),text.adj=c(-0.2,1.7))
+```
+```{r}
+opt.cut = function(perf,pred){
+  cut.ind = mapply(FUN=function(x, y, p){
+    d = (x-0)^2 + (y-1)^2
+    ind = which(d == min(d))
+    c(sensitivity = y [[ind]], specificity = 1-x[[ind]],
+      cutoff = p[[ind]])
+  }, perf@x.values, perf@y.values, pred@cutoffs)
+}
+print(opt.cut(ROCRperf,ROCRpred))
+```
+
+```{r}
+t1 = table(train$violator,predictions > .1258245)
+t1
+(t1[1,1]+t1[2,2])/nrow(train)
+```
+
+
+Based on Task 7, the sensitivity is .7627, the specificity is .8125, and the accuracy is .8047.  Incorrectly classifying a parolee could lead to wasted or poorly allocated resources on parolee reform or even skew public opinion on parolees and create stereotypes.
+
+```{r}
+t2 = table(train$violator,predictions > .8)
+t2
+(t2[1,1]+t1[2,2])/nrow(train)
+```
+
+```{r}
+parole_model4 =
+  logistic_reg() %>%
+  set_engine("glm")
+
+parole_recipe4 = recipe(violator ~ state+male+race+max.sentence+multiple.offenses+crime+age+time.served+max.sentence, test)%>%
+  step_dummy(all_nominal(),-all_outcomes())
+
+logreg_wf4 = workflow() %>%
+  add_recipe(parole_recipe4) %>%
+  add_model(parole_model4)
+
+parole_fit4 = fit(logreg_wf4, test)
+predictions2= predict(parole_fit4,test,type="prob") [2]
+t3 = table(test$violator,predictions2 > .8)
+t3
+(t3[1,1]+t1[2,2])/nrow(test)
+```
+
+Using the threshold from Task 9, I got an accuracy of 1.143, clearly the sensitivity and specificity are not balanced to have an accuracy of over 1.
